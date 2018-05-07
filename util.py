@@ -39,9 +39,17 @@ from . import bl_info
 import subprocess
 
 
+def load_appleseed_python_paths():
+    if os.environ['APPLESEED_PYTHON_PATH']:
+        print("[appleseed] Python Path: {0}".format(os.environ['APPLESEED_PYTHON_PATH']))
+        sys.path.append(os.environ['APPLESEED_PYTHON_PATH'])
+        bin_dir = get_appleseed_bin_dir()
+        os.environ['PATH'] += os.pathsep + bin_dir
+
+
 def safe_register_class(cls):
     try:
-        print("[appleseed] Registering class {0}...".format(cls))
+        # print("[appleseed] Registering class {0}...".format(cls))
         bpy.utils.register_class(cls)
     except Exception as e:
         print("[appleseed] ERROR: Failed to register class {0}: {1}".format(cls, e))
@@ -92,7 +100,9 @@ def read_osl_shaders():
 
     tool_dir, shader_directories = get_osl_search_paths()
 
-    oslinfo_path = os.path.join(tool_dir, 'oslinfo')
+    load_appleseed_python_paths()
+
+    import appleseed as asr
 
     for shader_dir in shader_directories:
         if os.path.isdir(shader_dir):
@@ -102,30 +112,14 @@ def read_osl_shaders():
                     print("[appleseed] Reading {0}...".format(file))
                     filename = os.path.join(shader_dir, file)
                     content = []
-                    cmd = ('"{0}"'.format(oslinfo_path), '-v', '"{0}"'.format(filename))
-                    try:
-                        process = subprocess.Popen(" ".join(cmd), cwd=tool_dir, bufsize=1, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                        while True:
-                            line = process.stdout.readline()
-                            if not line:
-                                break
-                            line = line.strip().decode("utf-8")
-                            if "ERROR" in line:
-                                print(line)
-                                print("[appleseed] ERROR: Failed to read {0}.".format(file))
-                                break
-                            content.append(line)
-                        shader_params = create_osl_dict(file, content)
-                        if shader_params:
-                            nodes.append(shader_params)
-                        else:
-                            print("[appleseed] ERROR: No shader parameters.")
-                    except OSError as e:
-                        print("[appleseed] OSError > " + e.errno)
-                        print("[appleseed] OSError > " + e.strerror)
-                        print("[appleseed] OSError > " + e.filename)
-                    except:
-                        print("[appleseed] ERROR: Failed to read {0}. Oslinfo did not launch: {1}".format(file, sys.exc_info()[0]))
+                    q = asr.ShaderQuery()
+                    q.open(filename)
+                    print(q.get_shader_name())
+                    print(q.get_metadata())
+                    print(q.get_num_params())
+
+
+
 
     print("[appleseed] OSL parsing complete.")
 
