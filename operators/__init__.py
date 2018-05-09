@@ -27,6 +27,7 @@
 #
 
 import bpy
+import os
 import subprocess
 from .. projectwriter import image_extensions
 from .. import util
@@ -42,18 +43,20 @@ class AppleseedConvertTextures(bpy.types.Operator):
         scene = context.scene
         textures = scene.appleseed
 
-        tool_dir, shader_dir = util.get_osl_search_paths()
+        tool_dir = os.path.join(util.get_appleseed_parent_dir(), 'bin')
+
+        maketx_path = os.path.join(tool_dir, 'maketx')
 
         for tex in textures.textures:
             filename = bpy.path.abspath(tex.name)
-            cmd = ['maketx', '--oiio --monochrome-detect -u --constant-color-detect --opaque-detect', '"{0}"'.format(filename)]
+            cmd = [maketx_path, '--oiio --monochrome-detect -u --constant-color-detect --opaque-detect', '"{0}"'.format(filename)]
             if tex.input_space != 'linear':
                 cmd.insert(-1, '--colorconvert {0} linear --unpremult'.format(tex.input_space))
             if tex.output_depth != 'default':
                 cmd.insert(-1, '-d {0}'.format(tex.output_depth))
             if tex.command_string:
                 cmd.insert(-1, '{0}'.format(tex.command_string))
-            process = subprocess.Popen(" ".join(cmd), cwd=tool_dir, shell=True, bufsize=1)
+            process = subprocess.Popen(" ".join(cmd), cwd=tool_dir, shell=True, bufsize=1, stdout=subprocess.PIPE)
             process.wait()
 
         return {'FINISHED'}

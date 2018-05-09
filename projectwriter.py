@@ -147,7 +147,7 @@ class Writer(object):
         self.__close_element("project")
 
     def __emit_search_paths(self):
-        osl_path, shader_directories = util.get_osl_search_paths()
+        shader_directories = util.get_osl_search_paths()
         self.__open_element("search_paths")
         for path in shader_directories:
             self.__emit_search_path(path)

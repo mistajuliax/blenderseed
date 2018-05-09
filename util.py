@@ -47,7 +47,6 @@ def load_appleseed_python_paths():
         os.environ['PATH'] += os.pathsep + bin_dir
 
 
-
 def safe_register_class(cls):
     try:
         print("[appleseed] Registering class {0}...".format(cls))
@@ -71,21 +70,24 @@ def get_appleseed_bin_dir():
     return appleseed_bin_dir
 
 
-# ------------------------------------
-# OSL shader reader.
-# ------------------------------------
-
-def get_osl_search_paths():
+def get_appleseed_parent_dir():
     appleseed_parent_dir = get_appleseed_bin_dir()
     while os.path.basename(appleseed_parent_dir) != 'bin':
         appleseed_parent_dir = os.path.dirname(appleseed_parent_dir)
     appleseed_parent_dir = os.path.dirname(appleseed_parent_dir)
 
+    return appleseed_parent_dir
+
+# ------------------------------------
+# OSL shader reader.
+# ------------------------------------
+
+def get_osl_search_paths():
+    appleseed_parent_dir = get_appleseed_parent_dir()
+
     shader_directories = (os.path.join(appleseed_parent_dir, 'shaders', 'appleseed'), os.path.join(appleseed_parent_dir, 'shaders', 'blenderseed'))
 
-    tool_dir = os.path.join(appleseed_parent_dir, 'bin')
-
-    return tool_dir, shader_directories
+    return shader_directories
 
 
 def read_osl_shaders():
@@ -99,7 +101,7 @@ def read_osl_shaders():
 
     print("[appleseed] Parsing OSL shaders...")
 
-    tool_dir, shader_directories = get_osl_search_paths()
+    shader_directories = get_osl_search_paths()
 
     load_appleseed_python_paths()
 
@@ -118,160 +120,54 @@ def read_osl_shaders():
                     d['inputs'] = []
                     d['outputs'] = []
                     d['name'] = q.get_metadata()['as_maya_node_name']['value']
+                    # d['name'] = q.get_metadata()['as_blender_node_name']['value']
                     d['filename'] = file.replace(".oso", "")
                     d['category'] = q.get_shader_type()
-                    # d['category'] = q.get_metadata()['as_blender_category']
+                    # d['category'] = q.get_metadata()['as_blender_category']['value']
                     num_of_params = q.get_num_params()
                     for x in range(0, num_of_params):
                         param = q.get_param_info(x)
                         keys = param.keys()
-                        meta = param['metadata']
-                        meta_keys = meta.keys()
-                        param_block = {}
-                        param_block['name'] = param['name']
-                        param_block['type'] = param['type']
-                        param_block['connectable'] = True
-                        param_block['hide_ui'] = param['validdefault'] is False
+                        metadata = param['metadata']
+                        metadata_keys = metadata.keys()
+                        param_data = {}
+                        param_data['name'] = param['name']
+                        param_data['type'] = param['type']
+                        param_data['connectable'] = True
+                        param_data['hide_ui'] = param['validdefault'] is False
                         if 'default' in keys:
-                            param_block['default'] = param['default']
-                        if 'label' in meta_keys:
-                            param_block['label'] = meta['label']['value']
-                        if 'widget' in meta_keys:
-                            param_block['widget'] = meta['widget']['value']
-                            if param_block['widget'] == 'null':
-                                param_block['hide_ui'] = True
-                        if 'min' in meta_keys:
-                            param_block['min'] = meta['min']['value']
-                        if 'max' in meta_keys:
-                            param_block['max'] = meta['max']['value']
-                        if 'softmin' in meta_keys:
-                            param_block['softmin'] = meta['softmin']['value']
-                        if 'softmax' in meta_keys:
-                            param_block['softmax'] = meta['softmax']['value']
-                        if 'help' in meta_keys:
-                            param_block['help'] = meta['help']['value']
-                        if 'options' in meta_keys:
-                            param_block['options'] = meta['options']['value'].split(" = ")[-1].replace("\"", "").split("|")
-                        if 'as_blender_input_socket' in meta_keys:
-                            param_block['connectable'] = False if meta['as_blender_input_socket']['value'] == 0.0 else True
+                            param_data['default'] = param['default']
+                        if 'label' in metadata_keys:
+                            param_data['label'] = metadata['label']['value']
+                        if 'widget' in metadata_keys:
+                            param_data['widget'] = metadata['widget']['value']
+                            if param_data['widget'] == 'null':
+                                param_data['hide_ui'] = True
+                        if 'min' in metadata_keys:
+                            param_data['min'] = metadata['min']['value']
+                        if 'max' in metadata_keys:
+                            param_data['max'] = metadata['max']['value']
+                        if 'softmin' in metadata_keys:
+                            param_data['softmin'] = metadata['softmin']['value']
+                        if 'softmax' in metadata_keys:
+                            param_data['softmax'] = metadata['softmax']['value']
+                        if 'help' in metadata_keys:
+                            param_data['help'] = metadata['help']['value']
+                        if 'options' in metadata_keys:
+                            param_data['options'] = metadata['options']['value'].split(" = ")[-1].replace("\"", "").split("|")
+                        if 'as_blender_input_socket' in metadata_keys:
+                            param_data['connectable'] = False if metadata['as_blender_input_socket']['value'] == 0.0 else True
 
                         if param['isoutput'] is True:
-                            d['outputs'].append(param_block)
+                            d['outputs'].append(param_data)
                         else:
-                            d['inputs'].append(param_block)
+                            d['inputs'].append(param_data)
 
                     nodes.append(d)
 
     print("[appleseed] OSL parsing complete.")
 
     return nodes
-
-
-def create_osl_dict(file, content=None):
-    d = {}
-    current_element = None
-    for line in content:
-        if len(line) == 0:
-            continue
-        if line.startswith("shader") or line.startswith("surface"):
-            d['inputs'] = []
-            d['outputs'] = []
-            d['filename'] = file.replace(".oso", "")
-            current_element = d
-            if line.startswith("surface"):
-                current_element['category'] = 'surface'
-            else:
-                current_element['category'] = 'shader'
-        else:
-            if line.startswith("Default value"):
-                current_element['default'] = line.split(": ")[-1].replace("\"", "")
-                if "type" in current_element:
-                    if current_element["type"] in ["color", "vector", "output vector", "float[2]"]:
-                        current_element['default'] = line.split("[")[-1].split("]")[0].strip()
-            elif line == 'Unknown default value':
-                current_element['hide_ui'] = True
-            elif line.startswith("metadata"):
-                if 'node_name' in line:
-                    current_element['name'] = line.split(" = ")[-1].replace("\"", "")
-                if "widget = " in line:
-                    current_element['widget'] = line.split(" = ")[-1].replace("\"", "")
-                    if current_element['widget'] == 'null':
-                        current_element['hide_ui'] = True
-                    if current_element['widget'] == 'filename':
-                        current_element['use_file_picker'] = True
-                if "classification" in line:
-                    if 'utility' in line:
-                        current_element['category'] = 'utility'
-                    if 'texture/2d' in line:
-                        current_element['category'] = 'texture'
-                    if 'texture/3d' in line:
-                        current_element['category'] = '3d_texture'
-                if "options = " in line:
-                    current_element['type'] = 'intenum'
-                    current_element['options'] = line.split(" = ")[-1].replace("\"", "").split("|")
-                    current_element['connectable'] = False
-                if "softmin = " in line:
-                    current_element['softmin'] = line.split(" ")[-1]
-                elif "min = " in line:
-                    current_element['min'] = line.split(" ")[-1]
-                else:
-                    pass
-                if "softmax = " in line:
-                    current_element['softmax'] = line.split(" ")[-1]
-                elif "max = " in line:
-                    current_element['max'] = line.split(" ")[-1]
-                else:
-                    pass
-                if "label = " in line:
-                    current_element['label'] = " ".join(line.split("=")[1:]).replace("\"", "").strip()
-                if "as_blender_input_socket = 0" in line:
-                    current_element['connectable'] = False
-                if "help = " in line:
-                    current_element['help'] = line.split(" = ")[-1].replace("\"", "")
-            elif line.startswith("\""):  # found a parameter
-                current_element = {}
-                element_name = line.split(" ")[0].replace("\"", "")
-                current_element['name'] = reverseValidate(element_name)
-                current_element['type'] = " ".join(line.split(" ")[1:]).replace("\"", "")
-                current_element['connectable'] = True
-                current_element['hide_ui'] = False
-                current_element['use_file_picker'] = False
-                if 'FilePath' in element_name:
-                    current_element['use_file_picker'] = True
-                if current_element['type'] == "string":
-                    current_element['connectable'] = False
-                if "output" in line:
-                    d['outputs'].append(current_element)
-                    current_element = d['outputs'][-1]
-                else:
-                    d['inputs'].append(current_element)
-                    current_element = d['inputs'][-1]
-            elif line.startswith("Unknown"):
-                continue
-            else:
-                print("ERROR: {0}".format(line))
-                return {}
-
-    return d
-
-
-def reverseValidate(pname):
-    if pname == "inMin":
-        return "min"
-    if pname == "inMax":
-        return "max"
-    if pname == "inVector":
-        return "vector"
-    if pname == "inMatrix":
-        return "matrix"
-    if pname == "inDiffuse":
-        return "diffuse"
-    if pname == "inColor":
-        return "color"
-    if pname == "outOutput":
-        return "output"
-    return pname
-
 
 # ------------------------------------
 # Generic utilities and settings.
