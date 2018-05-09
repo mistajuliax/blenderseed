@@ -119,11 +119,11 @@ def read_osl_shaders():
                     q.open(filename)
                     d['inputs'] = []
                     d['outputs'] = []
-                    d['name'] = q.get_metadata()['as_maya_node_name']['value']
-                    # d['name'] = q.get_metadata()['as_blender_node_name']['value']
+                    # d['name'] = q.get_metadata()['as_maya_node_name']['value']
+                    d['name'] = q.get_metadata()['as_blender_node_name']['value']
                     d['filename'] = file.replace(".oso", "")
-                    d['category'] = q.get_shader_type()
-                    # d['category'] = q.get_metadata()['as_blender_category']['value']
+                    # d['category'] = q.get_shader_type()
+                    d['category'] = q.get_metadata()['as_blender_category']['value']
                     num_of_params = q.get_num_params()
                     for x in range(0, num_of_params):
                         param = q.get_param_info(x)
