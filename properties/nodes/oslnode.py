@@ -198,17 +198,15 @@ def generate_node(node):
             elif socket_type == 'pointer':
                 stype.draw_color = draw_closure_color
 
-            elif socket_type in ('vector', 'output vector'):
+            elif socket_type == 'vector':
                 stype.draw_color = draw_vector_color
+                kwargs = {'name': in_socket['name'], 'description': helper}
                 if 'default' in in_socket.keys():
-                    stype.socket_value = bpy.props.FloatVectorProperty(name=in_socket['name'],
-                                                                       description=helper,
-                                                                       default=(float(in_socket['default'][0]),
-                                                                                float(in_socket['default'][1]),
-                                                                                float(in_socket['default'][2])))
-                else:
-                    stype.socket_value = bpy.props.FloatVectorProperty(name=in_socket['name'],
-                                                                       description=helper)
+                    kwargs['default'] = (float(in_socket['default'][0]),
+                                         float(in_socket['default'][1]),
+                                         float(in_socket['default'][2]))
+
+                stype.socket_value = bpy.props.FloatVectorProperty(**kwargs)
 
             elif socket_type == 'int':
                 stype.draw_color = draw_color_float
@@ -218,17 +216,13 @@ def generate_node(node):
 
             elif socket_type == 'float[2]':
                 stype.draw_color = draw_uv_color
+                kwargs = {'name': in_socket['name'], 'description': helper, 'size': 2}
                 if in_socket['hide_ui'] is False:
                     if 'default' in in_socket.keys():
-                        stype.socket_value = bpy.props.FloatVectorProperty(name=in_socket['name'],
-                                                                           description=helper,
-                                                                           size=2,
-                                                                           default=(float(in_socket['default'][0]),
-                                                                                    float(in_socket['default'][1])))
-                    else:
-                        stype.socket_value = bpy.props.FloatVectorProperty(name=in_socket['name'],
-                                                                           description=helper,
-                                                                           size=2)
+                        kwargs['default'] = (float(in_socket['default'][0]),
+                                             float(in_socket['default'][1]))
+
+                    stype.socket_value = bpy.props.FloatVectorProperty(**kwargs)
 
             elif socket_type == 'normal':
                 stype.draw_color = draw_vector_color
@@ -355,10 +349,10 @@ def generate_node(node):
             soft_maximum = prop['softmax']
 
         if prop['type'] == 'string':
+            kwargs = {'name': prop['label'], 'description': helper}
             if widget == 'filename':
-                setattr(ntype, prop_name, bpy.props.StringProperty(name=prop['label'],
-                                                                   description=helper,
-                                                                   subtype='FILE_PATH'))
+                kwargs['subtype'] = 'FILE_PATH'
+                setattr(ntype, prop_name, bpy.props.StringProperty(**kwargs))
                 filepaths.append(prop_name)
 
             elif widget in ('mapper', 'popup'):
@@ -371,8 +365,8 @@ def generate_node(node):
                                                                  items=items))
 
             else:
-                setattr(ntype, prop_name, bpy.props.StringProperty(name=prop['label'],
-                                                                   description=helper))
+                setattr(ntype, prop_name, bpy.props.StringProperty(**kwargs))
+
             parameter_types[prop['name']] = "string"
 
         elif prop['type'] == 'int' and widget in ('mapper', 'popup'):
