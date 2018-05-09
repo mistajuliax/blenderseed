@@ -45,7 +45,7 @@ class AppleseedOSLInSocket(NodeSocket, AppleseedSocket):
     hide_ui = False
 
     def draw(self, context, layout, node, text):
-        if self.is_output or self.is_linked or self.hide_ui:
+        if self.is_linked or self.hide_ui:
             layout.label(text)
         else:
             layout.prop(self, "socket_value", text=text)
@@ -137,36 +137,38 @@ def generate_node(node):
     for in_socket in input_sockets:
         if not in_socket['connectable'] and in_socket['hide_ui']:
             continue
-        elif not in_socket['connectable']:
+        if not in_socket['connectable']:
             non_connected_props.append(in_socket)
         else:
+            keys = in_socket.keys()
             helper = ""
             minimum = None
             maximum = None
             soft_minimum = None
             soft_maximum = None
+            hide_ui = False
             socket_name = 'Appleseed{0}{1}'.format(node['name'], in_socket['name'].capitalize())
-            if 'label' in in_socket.keys():
+            if 'label' in keys:
                 socket_label = "{0}".format(in_socket['label'])
             else:
-                socket_label = "{0}".format(in_socket['name'].strip('in_'))
-            if 'help' in in_socket.keys():
+                socket_label = "{0}".format(in_socket['name'])
+            if 'help' in keys:
                 helper = in_socket['help']
-            if 'min' in in_socket.keys():
+            if 'min' in keys:
                 minimum = in_socket['min']
-            if 'max' in in_socket.keys():
+            if 'max' in keys:
                 maximum = in_socket['max']
-            if 'softmin' in in_socket.keys():
+            if 'softmin' in keys:
                 soft_minimum = in_socket['softmin']
-            if 'softmax' in in_socket.keys():
+            if 'softmax' in keys:
                 soft_maximum = in_socket['softmax']
+            hide_ui = in_socket['hide_ui']
 
             stype = type(socket_name, (AppleseedOSLInSocket,), {})
             stype.bl_idname = socket_name
             stype.bl_label = socket_label
             stype.socket_osl_id = in_socket['name']
             socket_type = in_socket['type']
-
             if socket_type == 'float':
                 stype.draw_color = draw_color_float
 
@@ -187,9 +189,9 @@ def generate_node(node):
                 stype.socket_value = bpy.props.FloatVectorProperty(name=in_socket['name'],
                                                                    description=helper,
                                                                    subtype='COLOR',
-                                                                   default=(float(in_socket['default'].split(" ")[0]),
-                                                                            float(in_socket['default'].split(" ")[1]),
-                                                                            float(in_socket['default'].split(" ")[2])),
+                                                                   default=(float(in_socket['default'][0]),
+                                                                            float(in_socket['default'][1]),
+                                                                            float(in_socket['default'][2])),
                                                                    min=0.0,
                                                                    max=1.0)
 
@@ -201,9 +203,9 @@ def generate_node(node):
                 if 'default' in in_socket.keys():
                     stype.socket_value = bpy.props.FloatVectorProperty(name=in_socket['name'],
                                                                        description=helper,
-                                                                       default=(float(in_socket['default'].split(" ")[0]),
-                                                                                float(in_socket['default'].split(" ")[1]),
-                                                                                float(in_socket['default'].split(" ")[2])))
+                                                                       default=(float(in_socket['default'][0]),
+                                                                                float(in_socket['default'][1]),
+                                                                                float(in_socket['default'][2])))
                 else:
                     stype.socket_value = bpy.props.FloatVectorProperty(name=in_socket['name'],
                                                                        description=helper)
@@ -216,12 +218,17 @@ def generate_node(node):
 
             elif socket_type == 'float[2]':
                 stype.draw_color = draw_uv_color
-                if not in_socket['hide_ui']:
-                    stype.socket_value = bpy.props.FloatVectorProperty(name=in_socket['name'],
-                                                                       description=helper,
-                                                                       size=2,
-                                                                       default=(float(in_socket['default'].split(" ")[0]),
-                                                                                float(in_socket['default'].split(" ")[1])))
+                if in_socket['hide_ui'] is False:
+                    if 'default' in in_socket.keys():
+                        stype.socket_value = bpy.props.FloatVectorProperty(name=in_socket['name'],
+                                                                           description=helper,
+                                                                           size=2,
+                                                                           default=(float(in_socket['default'][0]),
+                                                                                    float(in_socket['default'][1])))
+                    else:
+                        stype.socket_value = bpy.props.FloatVectorProperty(name=in_socket['name'],
+                                                                           description=helper,
+                                                                           size=2)
 
             elif socket_type == 'normal':
                 stype.draw_color = draw_vector_color
@@ -233,7 +240,7 @@ def generate_node(node):
                 stype.draw_color = draw_point_color
 
             parameter_types[in_socket['name']] = in_socket['type']
-            stype.hide_ui = in_socket['hide_ui']
+            stype.hide_ui = hide_ui
             util.safe_register_class(stype)
 
             socket_input_names.append([socket_name, socket_label])
@@ -244,28 +251,28 @@ def generate_node(node):
         if 'label' in out_socket.keys():
             socket_label = "{0}".format(out_socket['label'])
         else:
-            socket_label = "{0}".format(out_socket['name'].strip("out_out"))
+            socket_label = "{0}".format(out_socket['name'].strip("out_"))
 
         stype = type(socket_name, (AppleseedOSLOutSocket,), {})
         stype.bl_idname = socket_name
         stype.bl_label = socket_label
         stype.socket_osl_id = out_socket['name']
         socket_type = out_socket['type']
-        if socket_type in ('output float[4]', 'output float'):
+        if socket_type in ('float[4]', 'float'):
             stype.draw_color = draw_color_float
-        elif socket_type in ('output color', 'output color[4]'):
+        elif socket_type in ('color', 'color[4]'):
             stype.draw_color = draw_color_color
-        elif socket_type in ('output normal'):
+        elif socket_type in ('normal'):
             stype.draw_color = draw_vector_color
-        elif socket_type in ('output pointer'):
+        elif socket_type in ('pointer'):
             stype.draw_color = draw_closure_color
-        elif socket_type in ('vector', 'output vector'):
+        elif socket_type in ('vector'):
             stype.draw_color = draw_vector_color
-        elif socket_type == 'output matrix':
+        elif socket_type == 'matrix':
             stype.draw_color = draw_matrix_color
-        elif socket_type in ('output point', 'output point[4]'):
+        elif socket_type in ('point', 'point[4]'):
             stype.draw_color = draw_point_color
-        elif socket_type in ('output float[2]'):
+        elif socket_type in ('float[2]'):
             stype.draw_color = draw_uv_color
         else:
             pass
@@ -326,6 +333,8 @@ def generate_node(node):
         widget = ""
         minimum = None
         maximum = None
+        soft_minimum = None
+        soft_maximum = None
 
         if 'widget' in prop.keys():
             widget = prop['widget']
@@ -346,40 +355,46 @@ def generate_node(node):
             soft_maximum = prop['softmax']
 
         if prop['type'] == 'string':
-            if prop['use_file_picker'] == True:
+            if widget == 'filename':
                 setattr(ntype, prop_name, bpy.props.StringProperty(name=prop['label'],
                                                                    description=helper,
                                                                    subtype='FILE_PATH'))
                 filepaths.append(prop_name)
+
+            elif widget in ('mapper', 'popup'):
+                items = []
+                for enum_item in prop['options']:
+                    items.append((enum_item, enum_item.capitalize(), ""))
+                setattr(ntype, prop_name, bpy.props.EnumProperty(name=prop['label'],
+                                                                 description=helper,
+                                                                 default=str(prop['default']),
+                                                                 items=items))
+
             else:
                 setattr(ntype, prop_name, bpy.props.StringProperty(name=prop['label'],
                                                                    description=helper))
             parameter_types[prop['name']] = "string"
 
-        if prop['type'] == 'intenum':
+        elif prop['type'] == 'int' and widget in ('mapper', 'popup'):
             items = []
             for enum_item in prop['options']:
-                if ':' in enum_item:
-                    items.append((enum_item.split(":")[1], enum_item.split(":")[0], ""))
-                    parameter_types[prop_name] = "int"
-                else:
-                    items.append((enum_item, enum_item.capitalize(), ""))
-                    parameter_types[prop_name] = "string"
-                setattr(ntype, prop_name, bpy.props.EnumProperty(name=prop['label'],
-                                                                 description=helper,
-                                                                 default=prop['default'],
-                                                                 items=items))
+                items.append((enum_item.split(":")[1], enum_item.split(":")[0], ""))
+                parameter_types[prop_name] = "int"
+
+            setattr(ntype, prop_name, bpy.props.EnumProperty(name=prop['label'],
+                                                             description=helper,
+                                                             default=str(int(prop['default'])),
+                                                             items=items))
 
         elif prop['type'] == 'int':
-            if widget in ('checkBox', 'null'):
-                setattr(ntype, prop_name, bpy.props.BoolProperty(name=prop['name'],
-                                                                 description=helper,
-                                                                 default=bool(int(prop['default']))))
+            if widget == 'checkBox':
+                kwargs = {'name': prop['name'], 'description': helper, 'default': bool(int(prop['default']))}
+                setattr(ntype, prop_name, bpy.props.BoolProperty(**kwargs))
                 parameter_types[prop['name']] = "int checkbox"
 
             else:
-
-                kwargs = {'name': prop['name'], 'description': helper, 'default': int(prop['default'])}
+                kwargs = {'name': prop['name'], 'description': helper, 'default': int(prop['default'])
+                          }
                 if minimum:
                     kwargs['min'] = int(minimum)
                 if maximum:
@@ -413,9 +428,9 @@ def generate_node(node):
             setattr(ntype, prop_name, bpy.props.FloatVectorProperty(name=prop['name'],
                                                                     description=helper,
                                                                     subtype='COLOR',
-                                                                    default=(float(prop['default'].split(" ")[0]),
-                                                                             float(prop['default'].split(" ")[1]),
-                                                                             float(prop['default'].split(" ")[2])),
+                                                                    default=(float(prop['default'][0]),
+                                                                             float(prop['default'][1]),
+                                                                             float(prop['default'][2])),
                                                                     min=0.0,
                                                                     max=1.0))
 
@@ -424,9 +439,9 @@ def generate_node(node):
         elif prop['type'] == 'vector':
             setattr(ntype, prop_name, bpy.props.FloatVectorProperty(name=prop['name'],
                                                                     description=helper,
-                                                                    default=(float(prop['default'].split(" ")[0]),
-                                                                             float(prop['default'].split(" ")[1]),
-                                                                             float(prop['default'].split(" ")[2]))))
+                                                                    default=(float(prop['default'][0]),
+                                                                             float(prop['default'][1]),
+                                                                             float(prop['default'][2]))))
 
             parameter_types[prop['name']] = "vector"
 

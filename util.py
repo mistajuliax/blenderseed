@@ -47,9 +47,10 @@ def load_appleseed_python_paths():
         os.environ['PATH'] += os.pathsep + bin_dir
 
 
+
 def safe_register_class(cls):
     try:
-        # print("[appleseed] Registering class {0}...".format(cls))
+        print("[appleseed] Registering class {0}...".format(cls))
         bpy.utils.register_class(cls)
     except Exception as e:
         print("[appleseed] ERROR: Failed to register class {0}: {1}".format(cls, e))
@@ -111,15 +112,55 @@ def read_osl_shaders():
                 if file.endswith(".oso"):
                     print("[appleseed] Reading {0}...".format(file))
                     filename = os.path.join(shader_dir, file)
-                    content = []
+                    d = {}
                     q = asr.ShaderQuery()
                     q.open(filename)
-                    print(q.get_shader_name())
-                    print(q.get_metadata())
-                    print(q.get_num_params())
+                    d['inputs'] = []
+                    d['outputs'] = []
+                    d['name'] = q.get_metadata()['as_maya_node_name']['value']
+                    d['filename'] = file.replace(".oso", "")
+                    d['category'] = q.get_shader_type()
+                    # d['category'] = q.get_metadata()['as_blender_category']
+                    num_of_params = q.get_num_params()
+                    for x in range(0, num_of_params):
+                        param = q.get_param_info(x)
+                        keys = param.keys()
+                        meta = param['metadata']
+                        meta_keys = meta.keys()
+                        param_block = {}
+                        param_block['name'] = param['name']
+                        param_block['type'] = param['type']
+                        param_block['connectable'] = True
+                        param_block['hide_ui'] = param['validdefault'] is False
+                        if 'default' in keys:
+                            param_block['default'] = param['default']
+                        if 'label' in meta_keys:
+                            param_block['label'] = meta['label']['value']
+                        if 'widget' in meta_keys:
+                            param_block['widget'] = meta['widget']['value']
+                            if param_block['widget'] == 'null':
+                                param_block['hide_ui'] = True
+                        if 'min' in meta_keys:
+                            param_block['min'] = meta['min']['value']
+                        if 'max' in meta_keys:
+                            param_block['max'] = meta['max']['value']
+                        if 'softmin' in meta_keys:
+                            param_block['softmin'] = meta['softmin']['value']
+                        if 'softmax' in meta_keys:
+                            param_block['softmax'] = meta['softmax']['value']
+                        if 'help' in meta_keys:
+                            param_block['help'] = meta['help']['value']
+                        if 'options' in meta_keys:
+                            param_block['options'] = meta['options']['value'].split(" = ")[-1].replace("\"", "").split("|")
+                        if 'as_blender_input_socket' in meta_keys:
+                            param_block['connectable'] = False if meta['as_blender_input_socket']['value'] == 0.0 else True
 
+                        if param['isoutput'] is True:
+                            d['outputs'].append(param_block)
+                        else:
+                            d['inputs'].append(param_block)
 
-
+                    nodes.append(d)
 
     print("[appleseed] OSL parsing complete.")
 
