@@ -28,6 +28,7 @@
 
 import multiprocessing
 import os
+import platform
 import sys
 from math import tan, atan, degrees
 
@@ -46,9 +47,12 @@ def load_appleseed_python_paths():
     else:
         python_path = os.path.join(get_appleseed_parent_dir(), 'lib', 'python2.7')
         sys.path.append(python_path)
-        print("[appleseed] Python Path set to: {0}".format(python_path))
-    bin_dir = get_appleseed_bin_dir()
-    os.environ['PATH'] += os.pathsep + bin_dir
+        print("[appleseed] Python path set to: {0}".format(python_path))
+
+    if platform.system() == 'Windows':
+        bin_dir = get_appleseed_bin_dir()
+        os.environ['PATH'] += os.pathsep + bin_dir
+        print("[appleseed] appleseed.dll path loaded")
 
 
 def safe_register_class(cls):
