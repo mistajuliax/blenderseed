@@ -40,11 +40,15 @@ import subprocess
 
 
 def load_appleseed_python_paths():
-    if os.environ['APPLESEED_PYTHON_PATH']:
-        print("[appleseed] Python Path: {0}".format(os.environ['APPLESEED_PYTHON_PATH']))
+    if 'APPLESEED_PYTHON_PATH' in os.environ:
+        print("[appleseed] Python Path set to: {0}".format(os.environ['APPLESEED_PYTHON_PATH']))
         sys.path.append(os.environ['APPLESEED_PYTHON_PATH'])
-        bin_dir = get_appleseed_bin_dir()
-        os.environ['PATH'] += os.pathsep + bin_dir
+    else:
+        python_path = os.path.join(get_appleseed_parent_dir(), 'lib', 'python2.7')
+        sys.path.append(python_path)
+        print("[appleseed] Python Path set to: {0}".format(python_path))
+    bin_dir = get_appleseed_bin_dir()
+    os.environ['PATH'] += os.pathsep + bin_dir
 
 
 def safe_register_class(cls):
@@ -81,6 +85,7 @@ def get_appleseed_parent_dir():
 # ------------------------------------
 # OSL shader reader.
 # ------------------------------------
+
 
 def get_osl_search_paths():
     appleseed_parent_dir = get_appleseed_parent_dir()
